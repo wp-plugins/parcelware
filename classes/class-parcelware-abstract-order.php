@@ -57,7 +57,8 @@ abstract class Parcelware_Abstract_Order {
 		'IMPORT_SHIPMENT_RETURN_LABEL' => null,
 		'IMPORT_SHIPMENT_RETURN_REFERENCE' => null,
 		'IMPORT_SHIPMENT_RETURN_BARCODE' => null,
-		'IMPORT_SHIPMENT_TIJDVAK_PALLET' => null
+		'IMPORT_SHIPMENT_TIJDVAK_PALLET' => null,
+		'XML' => '<items><item id=""311101""/></items>' // Required
 	);
 	
 	/**
@@ -70,12 +71,12 @@ abstract class Parcelware_Abstract_Order {
 	 * 
 	 * @param int $post_id
 	 */
-	protected function __construct( $post_id ){
+	public function __construct( $post_id, $xml_items = true ){
 		$this->set_post_id( $post_id );
 		
 		$this->variables = self::$variable_keys;
 		
-		$this->read_order_settings();
+		$this->read_order_settings( $xml_items );
 	}
 	
 	/**

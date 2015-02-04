@@ -19,13 +19,33 @@ class Parcelware_Admin {
 	 * Should be called on admin_menu hook. Adds settings pages to the admin menu.
 	 */
 	static function admin_menu() {
+		// Tools
 		add_submenu_page(
 			'tools.php', // parent_slug
 			__( 'Parcelware', 'parcelware' ), // page_title
 			__( 'Parcelware', 'parcelware' ), // menu_title
 			'manage_options', // capability
+			'parcelware-tools', // menu_slug
+			array( __CLASS__, 'page_tools' ) // function
+		);
+		
+		// Parcelware
+		add_menu_page( 
+			__( 'Parcelware', 'parcelware' ), // page_title
+			__( 'Parcelware', 'parcelware' ), // menu_title
+			'manage_options', // capability
 			'parcelware', // menu_slug
-			array( __CLASS__, 'order_page' ) // function
+			array( __CLASS__, 'page_parcelware' ), // function
+			plugins_url( 'images/parcelware-icon-16x16.png', Parcelware::$file ) // icon_url
+		);
+
+		add_submenu_page(
+			'parcelware', // parent_slug
+			__( 'Parcelware Documentation', 'parcelware' ), // page_title
+			__( 'Documentation', 'parcelware' ), // menu_title
+			'manage_options', // capability
+			'parcelware-documentation', // menu_slug
+			array( __CLASS__, 'page_documentation' ) // function
 		);
 	}
 
@@ -35,16 +55,36 @@ class Parcelware_Admin {
 	static function admin_enqueue() {
 		wp_enqueue_style( 'jquery-ui', plugins_url( 'style/jquery-ui.css', Parcelware::$file ) );
 		
-		wp_enqueue_script( 'jquery-ui', plugins_url( 'js/jquery-ui-min.js', Parcelware::$file ),  array( 'jquery' ) );
-		
-		wp_enqueue_script( 'jquery-datetime-picker', plugins_url( 'js/jquery-ui-timepicker-addon.js', Parcelware::$file ), array( 'jquery', 'jquery-ui') );
+		wp_enqueue_script(
+			'jquery-datetime-picker',
+			plugins_url( 'js/jquery-ui-timepicker-addon.js', Parcelware::$file ),
+			array(
+				'jquery',
+				'jquery-ui-core',
+				'jquery-ui-slider',
+				'jquery-ui-datepicker'
+		) );
 	}
 
 	/**
-	 * Shows the parcelware admin page
+	 * Page tools
 	 */
-	static function order_page() {	
+	public static function page_tools() {	
+		include Parcelware::get_plugin_path() . DIRECTORY_SEPARATOR . 'admin' . DIRECTORY_SEPARATOR . 'tools.php';
+	}
+
+	/**
+	 * Page Parcelware
+	 */
+	public static function page_parcelware() {	
 		include Parcelware::get_plugin_path() . DIRECTORY_SEPARATOR . 'admin' . DIRECTORY_SEPARATOR . 'parcelware.php';
+	}
+
+	/**
+	 * Page documentation
+	 */
+	public static function page_documentation() {	
+		include Parcelware::get_plugin_path() . DIRECTORY_SEPARATOR . 'admin' . DIRECTORY_SEPARATOR . 'documentation.php';
 	}
 
 	/**
@@ -56,12 +96,17 @@ class Parcelware_Admin {
 			return;
 		
 		global $post;
-
+		
+		// Wether to import as XML items ( support backwards compat, as no other
+		// reports of this not working have come in after numerous downloads ?
+		$xml_items = (boolean) filter_input( INPUT_POST, 'xml_items', FILTER_VALIDATE_BOOLEAN );
+		
 		// Add date filter
 		add_filter( 'posts_where', array( __CLASS__, 'posts_where_between_date' ) );
 		
 		$query = new WP_Query( array(
 			'post_type'        => 'shop_order',
+			'post_status'      => 'any',
 			'orderby'          => 'post_date',
 			'order'            => 'DESC',
 			'nopaging'         => true
@@ -74,7 +119,7 @@ class Parcelware_Admin {
 			while ( $query->have_posts() ) {
 				$query->the_post();
 
-				$row = new Parcelware_Woocommerce_Order( $post->ID );
+				$row = new Parcelware_Woocommerce_Order( $post->ID, $xml_items );
 				
 				$csv .= $row->to_csv(). "\r\n";
 			}
